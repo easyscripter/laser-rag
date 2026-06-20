@@ -9,8 +9,8 @@ class DocumentType(StrEnum):
     """Document class inferred from word count (DocumentAnalyzer)."""
 
     THESIS = "thesis"  # < 2k words
-    ARTICLE = "article"  # 2k–25k words
-    REVIEW = "review"  # 25k–35k words
+    ARTICLE = "article"  # 2k-25k words
+    REVIEW = "review"  # 25k-35k words
     MONOGRAPH = "monograph"  # > 35k words
 
 
