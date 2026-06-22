@@ -33,7 +33,7 @@ this document describes *how* to implement them.
 | 0 | Scaffold & tooling | ✅ Done |
 | 1 | Domain modules (§3.1) | ✅ Done |
 | 2 | Persistence (Postgres + Chroma) | ✅ Done |
-| 3 | LLM layer (§3.2) | ⬜ |
+| 3 | LLM layer (§3.2) | ✅ Done |
 | 4 | Async indexing (arq, §4) | ⬜ |
 | 5 | Authentication | ⬜ |
 | 6 | Conversational RAG + SSE (§5, §7) | ⬜ |

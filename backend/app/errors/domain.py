@@ -17,3 +17,7 @@ class MetadataExtractionError(DomainError):
 
 class DuplicateDocumentError(DomainError):
     """Raised when a document with the same content hash is already indexed (§8 dedup)."""
+
+
+class LLMClientError(DomainError):
+    """Raised when the LLM provider fails on all retry attempts."""
