@@ -1,4 +1,4 @@
-"""arq worker entrypoint."""
+"""arq worker entrypoint — Phase 4 will register real indexing job handlers."""
 
 from typing import ClassVar
 
@@ -19,8 +19,12 @@ async def shutdown(_: dict[str, object]) -> None:
     logger.info("worker.shutdown")
 
 
+async def _noop(ctx: dict[str, object]) -> None:
+    """Placeholder — arq requires at least one registered function. Replaced in Phase 4."""
+
+
 class WorkerSettings:
-    functions: ClassVar[list[object]] = []
+    functions: ClassVar[list[object]] = [_noop]
     on_startup = startup
     on_shutdown = shutdown
     redis_settings = RedisSettings.from_dsn(get_settings().redis_url)

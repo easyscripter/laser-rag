@@ -31,8 +31,8 @@ this document describes *how* to implement them.
 | Phase | Title | Status |
 |---|---|---|
 | 0 | Scaffold & tooling | ✅ Done |
-| 1 | Domain modules (§3.1) | ⏳ Next |
-| 2 | Persistence (Postgres + Chroma) | ⬜ |
+| 1 | Domain modules (§3.1) | ✅ Done |
+| 2 | Persistence (Postgres + Chroma) | ✅ Done |
 | 3 | LLM layer (§3.2) | ⬜ |
 | 4 | Async indexing (arq, §4) | ⬜ |
 | 5 | Authentication | ⬜ |
