@@ -12,6 +12,7 @@ Until then tests inject mocks.
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
 from typing import Protocol
 
 from app.domain.models import SearchHit
@@ -25,6 +26,14 @@ class LLMClient(Protocol):
 
         ``task`` selects the model tier downstream (e.g. ``"metadata"``); the
         domain layer treats it as an opaque label.
+        """
+        ...
+
+    def stream(self, prompt: str, *, task: str) -> AsyncIterator[str]:
+        """Stream the completion for ``prompt`` token-by-token (spec §7 SSE).
+
+        Returns an async iterator of text deltas. ``task`` selects the model tier
+        downstream, exactly as in :meth:`complete`.
         """
         ...
 

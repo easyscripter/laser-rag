@@ -36,7 +36,7 @@ this document describes *how* to implement them.
 | 3 | LLM layer (§3.2) | ✅ Done |
 | 4 | Async indexing (arq, §4) | ✅ Done |
 | 5 | Authentication | ✅ Done |
-| 6 | Conversational RAG + SSE (§5, §7) | ⬜ |
+| 6 | Conversational RAG + SSE (§5, §7) | ✅ Done |
 | 7 | Remaining REST (§6) | ⬜ |
 | 8 | Frontend | ⬜ |
 | 9 | Build & verification | ⬜ |

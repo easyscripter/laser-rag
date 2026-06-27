@@ -18,9 +18,13 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from app.auth.repository import UserRepository
 from app.auth.service import AuthService
 from app.auth.tokens import TokenClaims, TokenError, decode_token
+from app.chat.engine import ChatEngine
+from app.chat.factory import build_chat_engine
+from app.chat.repository import ConversationRepository
 from app.core.config import Settings, get_settings
 from app.core.constants import TOKEN_TYPE_ACCESS
 from app.core.enums.auth import Role
+from app.db.conversation_repository import PostgreSQLConversationRepository
 from app.db.user_repository import PostgreSQLUserRepository
 from app.queue.queue import ArqTaskQueue, TaskQueue
 from app.queue.store import JobStore, RedisJobStore
@@ -98,3 +102,12 @@ require_curator = require_role(Role.CURATOR)
 def get_tenant_id(user: TokenClaims = Depends(get_current_user)) -> str:
     """The active tenant is taken from the authenticated user's token (spec §11)."""
     return user.tenant_id
+
+
+def get_conversation_repository() -> ConversationRepository:
+    return PostgreSQLConversationRepository()
+
+
+def get_chat_engine(user: TokenClaims = Depends(get_current_user)) -> ChatEngine:
+    """Build a per-tenant chat engine for the authenticated user (spec §5)."""
+    return build_chat_engine(user.tenant_id)
