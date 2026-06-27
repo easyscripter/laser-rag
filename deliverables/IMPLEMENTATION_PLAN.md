@@ -35,7 +35,7 @@ this document describes *how* to implement them.
 | 2 | Persistence (Postgres + Chroma) | ✅ Done |
 | 3 | LLM layer (§3.2) | ✅ Done |
 | 4 | Async indexing (arq, §4) | ✅ Done |
-| 5 | Authentication | ⬜ |
+| 5 | Authentication | ✅ Done |
 | 6 | Conversational RAG + SSE (§5, §7) | ⬜ |
 | 7 | Remaining REST (§6) | ⬜ |
 | 8 | Frontend | ⬜ |

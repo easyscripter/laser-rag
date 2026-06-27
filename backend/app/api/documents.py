@@ -13,7 +13,14 @@ from pathlib import Path
 import anyio
 from fastapi import APIRouter, Depends, File, UploadFile, status
 
-from app.api.deps import get_app_settings, get_job_store, get_task_queue, get_tenant_id
+from app.api.deps import (
+    get_app_settings,
+    get_job_store,
+    get_task_queue,
+    get_tenant_id,
+    require_curator,
+)
+from app.auth.tokens import TokenClaims
 from app.core.config import Settings
 from app.core.constants import UPLOAD_READ_CHUNK_BYTES
 from app.core.logging import get_logger
@@ -62,8 +69,12 @@ async def upload_document(
     tenant_id: str = Depends(get_tenant_id),
     store: JobStore = Depends(get_job_store),
     queue: TaskQueue = Depends(get_task_queue),
+    _: TokenClaims = Depends(require_curator),
 ) -> UploadAccepted:
-    """Accept a document, queue it for indexing, return 202 with job + doc ids."""
+    """Accept a document, queue it for indexing, return 202 with job + doc ids.
+
+    Curator-only: ingesting documents is a curation action (spec §11).
+    """
     filename = validate_filename(file.filename)
     ext = validate_extension(filename, settings)
 

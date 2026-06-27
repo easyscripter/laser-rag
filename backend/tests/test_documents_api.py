@@ -12,12 +12,30 @@ from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
-from app.api.deps import get_app_settings, get_job_store, get_task_queue
+from app.api.deps import (
+    get_app_settings,
+    get_current_user,
+    get_job_store,
+    get_task_queue,
+)
+from app.auth.tokens import TokenClaims
 from app.core.config import Settings
+from app.core.constants import TOKEN_TYPE_ACCESS
+from app.core.enums.auth import Role
 from app.core.enums.jobs import JobStatus
 from app.main import create_app
 from app.queue.store import InMemoryJobStore
 from fastapi.testclient import TestClient
+
+
+def _curator() -> TokenClaims:
+    return TokenClaims(
+        sub="u-curator",
+        username="curator",
+        role=Role.CURATOR,
+        tenant_id="default",
+        type=TOKEN_TYPE_ACCESS,
+    )
 
 
 class FakeTaskQueue:
@@ -47,6 +65,7 @@ def client(
     app.dependency_overrides[get_app_settings] = lambda: settings
     app.dependency_overrides[get_job_store] = lambda: store
     app.dependency_overrides[get_task_queue] = lambda: queue
+    app.dependency_overrides[get_current_user] = _curator
     yield TestClient(app)
     app.dependency_overrides.clear()
 

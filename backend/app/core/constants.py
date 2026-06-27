@@ -13,3 +13,7 @@ FIRST_STAGE = 1
 LAST_STAGE = 6
 
 UPLOAD_READ_CHUNK_BYTES = 1024 * 1024  # 1 MiB
+
+# --- Auth / JWT ---
+TOKEN_TYPE_ACCESS = "access"
+TOKEN_TYPE_REFRESH = "refresh"

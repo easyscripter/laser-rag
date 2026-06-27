@@ -9,7 +9,8 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from app.api.deps import get_job_store, get_task_queue
+from app.api.deps import get_current_user, get_job_store, get_task_queue, require_curator
+from app.auth.tokens import TokenClaims
 from app.core.logging import get_logger
 from app.queue.queue import TaskQueue
 from app.queue.store import JobStore
@@ -33,6 +34,7 @@ async def _load_job(job_id: str, store: JobStore) -> JobStatusResponse:
 async def get_job(
     job_id: str,
     store: JobStore = Depends(get_job_store),
+    _: TokenClaims = Depends(get_current_user),
 ) -> JobStatusResponse:
     """Return the current stage/status of an indexing job (spec §6)."""
     return await _load_job(job_id, store)
@@ -48,8 +50,12 @@ async def retry_job(
     body: RetryRequest,
     store: JobStore = Depends(get_job_store),
     queue: TaskQueue = Depends(get_task_queue),
+    _: TokenClaims = Depends(require_curator),
 ) -> UploadAccepted:
-    """Re-enqueue ``job_id`` from ``from_stage``, reusing earlier artifacts (spec §4)."""
+    """Re-enqueue ``job_id`` from ``from_stage``, reusing earlier artifacts (spec §4).
+
+    Curator-only: re-indexing is a curation action (spec §11).
+    """
     job = await store.get(job_id)
     if job is None:
         raise HTTPException(
