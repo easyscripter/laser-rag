@@ -6,8 +6,11 @@ Synchronous to match the VectorBackend Protocol (spec Phase 2).
 
 from __future__ import annotations
 
+from typing import cast
+
 import chromadb
 from chromadb import Collection
+from chromadb.api.types import Include, Metadatas, PyEmbeddings, Where
 
 from app.core.config import get_settings
 from app.domain.models import SearchHit
@@ -28,11 +31,13 @@ class ChromaVectorBackend:
         metadatas: list[dict[str, str]],
     ) -> None:
         """Upsert embedded chunks — upsert handles deterministic re-indexing."""
+        # Our Protocol uses concrete list/dict types; Chroma's are invariant unions
+        # that these are runtime-compatible with, so cast to the Chroma aliases.
         self._collection.upsert(
             ids=ids,
-            embeddings=embeddings,
+            embeddings=cast(PyEmbeddings, embeddings),
             documents=documents,
-            metadatas=metadatas,
+            metadatas=cast(Metadatas, metadatas),
         )
 
     def query(
@@ -43,28 +48,27 @@ class ChromaVectorBackend:
         where: dict[str, str] | None = None,
     ) -> list[SearchHit]:
         """Return nearest chunks as SearchHit objects."""
-        kwargs: dict[str, object] = {
-            "query_embeddings": [embedding],
-            "n_results": n_results,
-            "include": ["documents", "metadatas", "distances"],
-        }
-        if where:
-            kwargs["where"] = where
+        include: Include = ["documents", "metadatas", "distances"]
+        result = self._collection.query(
+            query_embeddings=cast(PyEmbeddings, [embedding]),
+            n_results=n_results,
+            where=cast(Where, where) if where else None,
+            include=include,
+        )
 
-        result = self._collection.query(**kwargs)
-
-        ids: list[str] = result["ids"][0]
-        documents: list[str] = result["documents"][0]
-        metadatas: list[dict[str, str]] = result["metadatas"][0]
-        distances: list[float] = result["distances"][0]
+        # documents/metadatas/distances are optional in the QueryResult TypedDict.
+        ids = result["ids"][0]
+        documents = (result["documents"] or [[]])[0]
+        metadatas = (result["metadatas"] or [[]])[0]
+        distances = (result["distances"] or [[]])[0]
 
         return [
             SearchHit(
                 chunk_id=chunk_id,
-                doc_id=meta.get("doc_id", ""),
+                doc_id=str(meta.get("doc_id", "")),
                 text=text,
                 distance=float(dist),
-                metadata=meta,
+                metadata={k: str(v) for k, v in meta.items()},
             )
             for chunk_id, text, meta, dist in zip(ids, documents, metadatas, distances, strict=True)
         ]

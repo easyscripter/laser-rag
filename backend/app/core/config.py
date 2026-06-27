@@ -57,6 +57,7 @@ class Settings(BaseSettings):
     allowed_extensions: list[str] = Field(
         default_factory=lambda: ["pdf", "docx", "odt", "txt", "md"]
     )
+    upload_dir: str = "/data/uploads"  # where uploaded source files are stored
 
     # --- Multi-tenancy seam
     default_tenant_id: str = "default"

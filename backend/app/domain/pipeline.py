@@ -20,11 +20,19 @@ from pathlib import Path
 
 from app.domain.chroma_indexer import ChromaIndexer
 from app.domain.constants import RETRIEVAL_TOP_K
-from app.domain.database_manager import DatabaseManager
+from app.domain.database_manager import DatabaseManager, StoredDocument
 from app.domain.document_analyzer import DocumentAnalyzer
 from app.domain.document_splitter import DocumentSplitter
+from app.domain.enums import DocumentType
 from app.domain.metadata_extractor import MetadataExtractor
-from app.domain.models import SearchHit
+from app.domain.models import (
+    AnalysisResult,
+    Chunk,
+    DocumentMetadata,
+    ExtractionResult,
+    IndexedChunk,
+    SearchHit,
+)
 from app.domain.text_extractor import TextExtractor
 from app.errors.domain import DuplicateDocumentError
 
@@ -61,49 +69,35 @@ class RAGPipeline:
         self._indexer = indexer
         self._database = database
 
-    async def index(self, path: str | Path, *, tenant_id: str) -> IndexResult:
-        """Run the six indexing stages and return a summary (spec §4)."""
+    async def index(
+        self, path: str | Path, *, tenant_id: str, doc_id: str | None = None
+    ) -> IndexResult:
+        """Run the six indexing stages in order and return a summary (spec §4).
+
+        Synchronous in-process path (used by the smoke test). The async worker
+        runs the same stage methods one at a time, persisting each stage's output
+        so a job can be retried from any stage (``StageRunner``, Phase 4).
+        """
         file_path = Path(path)
+        doc_id = doc_id or uuid.uuid4().hex
 
-        # Stage 1 — extract text + content hash.
-        extraction = self._extractor.extract(file_path)
-        if await self._database.document_exists(
-            tenant_id=tenant_id, sha256=extraction.sha256
-        ):
+        extraction = self.extract(file_path)  # Stage 1
+        if await self.is_duplicate(tenant_id=tenant_id, sha256=extraction.sha256):
             raise DuplicateDocumentError(extraction.sha256)
-
-        # Stage 2 — classify type + language.
-        analysis = self._analyzer.analyze(extraction.text)
-
-        # Stage 3 — bibliographic metadata (LLM, with filename fallback).
-        metadata = await self._metadata_extractor.extract(
-            extraction.text,
-            doc_type=analysis.doc_type,
-            filename=file_path.name,
+        analysis = self.analyze(extraction.text)  # Stage 2
+        metadata = await self.extract_metadata(  # Stage 3
+            extraction.text, doc_type=analysis.doc_type, filename=file_path.name
         )
-
-        # Stage 4 — chunk the text.
-        chunks = self._splitter.split(extraction.text)
-
-        # Stage 5 — embed + store vectors.
-        doc_id = uuid.uuid4().hex
-        indexed_chunks = self._indexer.index(
-            doc_id,
-            chunks,
-            metadata=metadata,
-            lang=analysis.lang.value,
-            doc_type=analysis.doc_type.value,
+        chunks = self.split(extraction.text)  # Stage 4
+        indexed_chunks = self.index_vectors(  # Stage 5
+            doc_id, chunks, metadata=metadata, analysis=analysis
         )
-
-        # Stage 6 — persist relational rows atomically.
-        await self._database.save_document(
+        await self.persist(  # Stage 6
             doc_id=doc_id,
             tenant_id=tenant_id,
-            sha256=extraction.sha256,
-            metadata=metadata,
+            extraction=extraction,
             analysis=analysis,
-            quality_score=extraction.quality_score,
-            n_pages=extraction.n_pages,
+            metadata=metadata,
             indexed_chunks=indexed_chunks,
         )
 
@@ -114,6 +108,69 @@ class RAGPipeline:
             doc_type=analysis.doc_type.value,
             lang=analysis.lang.value,
             warning=extraction.warning,
+        )
+
+    # --- Individual stages (spec §4) — shared by index() and the async worker ---
+
+    def extract(self, path: str | Path) -> ExtractionResult:
+        """Stage 1 — normalized text, SHA-256 and quality score."""
+        return self._extractor.extract(Path(path))
+
+    async def is_duplicate(self, *, tenant_id: str, sha256: str) -> bool:
+        """SHA-256 dedup check against already-indexed documents (spec §8)."""
+        return await self._database.document_exists(tenant_id=tenant_id, sha256=sha256)
+
+    def analyze(self, text: str) -> AnalysisResult:
+        """Stage 2 — document type (by size) and language (by char mix)."""
+        return self._analyzer.analyze(text)
+
+    async def extract_metadata(
+        self, text: str, *, doc_type: DocumentType, filename: str
+    ) -> DocumentMetadata:
+        """Stage 3 — bibliographic metadata (LLM, with filename fallback)."""
+        return await self._metadata_extractor.extract(text, doc_type=doc_type, filename=filename)
+
+    def split(self, text: str) -> list[Chunk]:
+        """Stage 4 — chunk into 800-word fragments with 150-word overlap."""
+        return self._splitter.split(text)
+
+    def index_vectors(
+        self,
+        doc_id: str,
+        chunks: list[Chunk],
+        *,
+        metadata: DocumentMetadata,
+        analysis: AnalysisResult,
+    ) -> list[IndexedChunk]:
+        """Stage 5 — embed chunks and upsert them into the vector store."""
+        return self._indexer.index(
+            doc_id,
+            chunks,
+            metadata=metadata,
+            lang=analysis.lang.value,
+            doc_type=analysis.doc_type.value,
+        )
+
+    async def persist(
+        self,
+        *,
+        doc_id: str,
+        tenant_id: str,
+        extraction: ExtractionResult,
+        analysis: AnalysisResult,
+        metadata: DocumentMetadata,
+        indexed_chunks: list[IndexedChunk],
+    ) -> StoredDocument:
+        """Stage 6 — persist relational rows atomically (rollback on error)."""
+        return await self._database.save_document(
+            doc_id=doc_id,
+            tenant_id=tenant_id,
+            sha256=extraction.sha256,
+            metadata=metadata,
+            analysis=analysis,
+            quality_score=extraction.quality_score,
+            n_pages=extraction.n_pages,
+            indexed_chunks=indexed_chunks,
         )
 
     def search(

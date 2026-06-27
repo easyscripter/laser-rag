@@ -9,7 +9,7 @@ Four tables:
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime
+from datetime import datetime
 
 from sqlalchemy import (
     BigInteger,
@@ -24,9 +24,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
-
-def _utcnow() -> datetime:
-    return datetime.now(UTC)
+from app.core.time import utcnow
 
 
 def _new_uuid() -> str:
@@ -70,7 +68,7 @@ class Document(Base):
     chunk_ids: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
 
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=_utcnow
+        DateTime(timezone=True), nullable=False, default=utcnow
     )
 
     citations: Mapped[list[Citation]] = relationship(
@@ -86,7 +84,7 @@ class Conversation(Base):
     user_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     title: Mapped[str | None] = mapped_column(String(512), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=_utcnow
+        DateTime(timezone=True), nullable=False, default=utcnow
     )
 
     messages: Mapped[list[Message]] = relationship(
@@ -105,7 +103,7 @@ class Message(Base):
     content: Mapped[str] = mapped_column(Text, nullable=False)
     citations_json: Mapped[dict[str, object] | None] = mapped_column(JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=_utcnow
+        DateTime(timezone=True), nullable=False, default=utcnow
     )
 
     conversation: Mapped[Conversation] = relationship("Conversation", back_populates="messages")
