@@ -40,6 +40,11 @@ class ChromaVectorBackend:
             metadatas=cast(Metadatas, metadatas),
         )
 
+    def delete_by_ids(self, ids: list[str]) -> None:
+        """Delete chunks by their exact chunk IDs (used by ``DELETE /documents``)."""
+        if ids:
+            self._collection.delete(ids=ids)
+
     def query(
         self,
         *,

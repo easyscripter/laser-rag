@@ -37,7 +37,7 @@ this document describes *how* to implement them.
 | 4 | Async indexing (arq, §4) | ✅ Done |
 | 5 | Authentication | ✅ Done |
 | 6 | Conversational RAG + SSE (§5, §7) | ✅ Done |
-| 7 | Remaining REST (§6) | ⬜ |
+| 7 | Remaining REST (§6) | ✅ Done |
 | 8 | Frontend | ⬜ |
 | 9 | Build & verification | ⬜ |
 

@@ -24,8 +24,14 @@ from app.chat.repository import ConversationRepository
 from app.core.config import Settings, get_settings
 from app.core.constants import TOKEN_TYPE_ACCESS
 from app.core.enums.auth import Role
+from app.db.chroma_backend import ChromaVectorBackend, make_chroma_backend
 from app.db.conversation_repository import PostgreSQLConversationRepository
+from app.db.document_repository import PostgreSQLDocumentRepository
+from app.db.embedder import SentenceTransformerEmbedder
+from app.db.stats_repository import PostgreSQLStatsRepository
 from app.db.user_repository import PostgreSQLUserRepository
+from app.domain.chroma_indexer import ChromaIndexer
+from app.llm import LangChainLLMClient, build_llm_client
 from app.queue.queue import ArqTaskQueue, TaskQueue
 from app.queue.store import JobStore, RedisJobStore
 
@@ -106,6 +112,35 @@ def get_tenant_id(user: TokenClaims = Depends(get_current_user)) -> str:
 
 def get_conversation_repository() -> ConversationRepository:
     return PostgreSQLConversationRepository()
+
+
+def get_document_repository() -> PostgreSQLDocumentRepository:
+    """Provide a document repository for list/get/delete operations (Phase 7)."""
+    return PostgreSQLDocumentRepository()
+
+
+def get_stats_repository() -> PostgreSQLStatsRepository:
+    """Provide a stats repository for aggregate count queries (Phase 7)."""
+    return PostgreSQLStatsRepository()
+
+
+def get_chroma_backend(
+    user: TokenClaims = Depends(get_current_user),
+) -> ChromaVectorBackend:
+    """Per-tenant ChromaDB backend — used by DELETE /documents (Phase 7)."""
+    return make_chroma_backend(user.tenant_id)
+
+
+def get_retriever(
+    user: TokenClaims = Depends(get_current_user),
+) -> ChromaIndexer:
+    """Per-tenant ChromaIndexer for the semantic search endpoint (Phase 7)."""
+    return ChromaIndexer(SentenceTransformerEmbedder(), make_chroma_backend(user.tenant_id))
+
+
+def get_llm_client() -> LangChainLLMClient:
+    """LLM client used for translation in the search endpoint (Phase 7)."""
+    return build_llm_client(get_settings())
 
 
 def get_chat_engine(user: TokenClaims = Depends(get_current_user)) -> ChatEngine:

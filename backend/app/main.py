@@ -13,6 +13,8 @@ from app.api.auth import router as auth_router
 from app.api.conversations import router as conversations_router
 from app.api.documents import router as documents_router
 from app.api.jobs import router as jobs_router
+from app.api.search import router as search_router
+from app.api.stats import router as stats_router
 from app.core.config import get_settings
 from app.core.constants import API_V1_PREFIX, APP_NAME
 from app.core.logging import configure_logging, get_logger
@@ -67,6 +69,8 @@ def create_app() -> FastAPI:
     app.include_router(documents_router, prefix=API_V1_PREFIX)
     app.include_router(jobs_router, prefix=API_V1_PREFIX)
     app.include_router(conversations_router, prefix=API_V1_PREFIX)
+    app.include_router(search_router, prefix=API_V1_PREFIX)
+    app.include_router(stats_router, prefix=API_V1_PREFIX)
 
     return app
 

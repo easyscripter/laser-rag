@@ -20,7 +20,9 @@ from app.chat.repository import ConversationRepository
 from app.core.logging import get_logger
 from app.schemas.chat import (
     ConversationCreated,
+    ConversationHistoryResponse,
     CreateConversationRequest,
+    MessageOut,
     MessageRequest,
 )
 
@@ -45,6 +47,39 @@ async def create_conversation(
     )
     logger.info("conversation.created", conversation_id=conversation.id)
     return ConversationCreated(conversation_id=conversation.id)
+
+
+@router.get(
+    "/conversations/{conversation_id}",
+    response_model=ConversationHistoryResponse,
+)
+async def get_conversation(
+    conversation_id: str,
+    user: TokenClaims = Depends(get_current_user),
+    repo: ConversationRepository = Depends(get_conversation_repository),
+) -> ConversationHistoryResponse:
+    """Return a conversation's full message history (spec §6)."""
+    conversation = await repo.get(conversation_id, tenant_id=user.tenant_id)
+    if conversation is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"unknown conversation: {conversation_id}",
+        )
+    messages = await repo.list_messages(conversation_id)
+    return ConversationHistoryResponse(
+        conversation_id=conversation.id,
+        title=conversation.title,
+        messages=[
+            MessageOut(
+                id=m.id,
+                role=m.role.value,
+                content=m.content,
+                created_at=m.created_at,
+                citations_json=m.citations_json,
+            )
+            for m in messages
+        ],
+    )
 
 
 @router.post("/conversations/{conversation_id}/messages")

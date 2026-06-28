@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import datetime
+
 from pydantic import BaseModel, Field
 
 
@@ -22,3 +24,21 @@ class MessageRequest(BaseModel):
 
     query: str = Field(min_length=1)
     filters: dict[str, str] | None = None
+
+
+class MessageOut(BaseModel):
+    """A single turn inside ``GET /conversations/{id}`` (spec §6)."""
+
+    id: str
+    role: str
+    content: str
+    created_at: datetime
+    citations_json: dict[str, object] | None = None
+
+
+class ConversationHistoryResponse(BaseModel):
+    """``GET /conversations/{id}`` payload — full message history (spec §6)."""
+
+    conversation_id: str
+    title: str | None = None
+    messages: list[MessageOut] = Field(default_factory=list)
